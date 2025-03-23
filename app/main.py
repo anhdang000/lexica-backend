@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Query, Body
 from app.models.responses import HealthResponse, DictionaryEntry
 from app.services.dictionary import Dictionary
 from app.services.vocabulary_manager import VocabularyManager
+from app.services.practice_games import PracticeGames
 from app.utils.text_utils import validate_word
 from typing import List, Dict, Any
 
@@ -14,6 +15,7 @@ app = FastAPI(
 # Initialize services
 dictionary = Dictionary()
 vocabulary_manager = VocabularyManager()
+practice_games = PracticeGames()
 
 @app.get("/", response_model=HealthResponse, tags=["Health"])
 async def health_check():
@@ -65,4 +67,34 @@ async def get_vocab_text(text: str = Body(..., description="Text to extract voca
     
     # Extract vocabulary from text using the vocabulary manager service
     return await vocabulary_manager.get_vocab_text(text)
+
+@app.post("/practice/quiz", tags=["Practice"])
+async def generate_quiz(word_list: List[Dict[str, Any]] = Body(..., description="List of words with their information to generate quiz from")):
+    """
+    Generate a quiz session from a list of words.
+    
+    Args:
+        word_list: List of dictionaries containing word information
+                  Each dict should have 'word', 'definition', and 'example' keys
+        
+    Returns:
+        List of quiz questions with multiple choice options
+    """
+    if not word_list or len(word_list) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Word list is empty"
+        )
+    
+    # Validate each word entry has required fields
+    required_fields = {'word', 'definition', 'example'}
+    for entry in word_list:
+        if not all(field in entry for field in required_fields):
+            raise HTTPException(
+                status_code=400,
+                detail="Each word entry must contain word, definition, and example"
+            )
+    
+    # Generate quiz using practice games service
+    return await practice_games.gen_quiz_sess(word_list)
 
