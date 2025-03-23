@@ -13,10 +13,6 @@ dist/
 build/
 *.egg-info/
 
-# Local development settings
-.env
-config.ini
-
 # IDE specific files
 .idea/
 .vscode/
