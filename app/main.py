@@ -81,16 +81,17 @@ async def get_vocab_text(text: str = Body(..., description="Text to extract voca
     return await vocabulary_manager.get_vocab_text(text)
 
 @app.post("/web/fetch", tags=["WebContent"])
-async def fetch_web_content(url: str = Body(..., description="URL to fetch content from")):
+async def fetch_web_content(payload: Dict[str, str] = Body(..., description="JSON payload with URL to fetch content from")):
     """
     Fetch content from a specified URL using FetchFox.
     
     Args:
-        url: The URL to fetch content from
+        payload: JSON body containing 'url' key with the URL to fetch content from
         
     Returns:
         Structured content from the web page including text, markdown, and metadata
     """
+    url = payload.get("url")
     if not url or not url.startswith(('http://', 'https://')):
         raise HTTPException(
             status_code=400,
