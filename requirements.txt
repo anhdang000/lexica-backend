@@ -7,3 +7,4 @@ google-genai==1.1.0
 eng_to_ipa==0.0.2
 aiohttp==3.9.1
 crawl4ai
+beautifulsoup4==4.12.2

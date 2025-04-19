@@ -3,6 +3,7 @@ from app.models.responses import HealthResponse, DictionaryEntry
 from app.services.dictionary import Dictionary
 from app.services.vocabulary_manager import VocabularyManager
 from app.services.practice_games import PracticeGames
+from app.services.web_fetcher import WebFetcher
 from app.utils.text_utils import validate_word
 from typing import List, Dict, Any
 
@@ -67,6 +68,27 @@ async def get_vocab_text(text: str = Body(..., description="Text to extract voca
     
     # Extract vocabulary from text using the vocabulary manager service
     return await vocabulary_manager.get_vocab_text(text)
+
+@app.post("/web/fetch", tags=["WebContent"])
+async def fetch_web_content(url: str = Body(..., description="URL to fetch content from")):
+    """
+    Fetch content from a specified URL using crawl4ai.
+    
+    Args:
+        url: The URL to fetch content from
+        
+    Returns:
+        Structured content from the web page including text, markdown, and metadata
+    """
+    if not url or not url.startswith(('http://', 'https://')):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid URL provided. URL must start with http:// or https://"
+        )
+    
+    # Create a new WebFetcher instance for each request to avoid resource conflicts
+    web_fetcher = WebFetcher()
+    return await web_fetcher.fetch_content(url)
 
 @app.post("/practice/quiz", tags=["Practice"])
 async def generate_quiz(word_list: List[Dict[str, Any]] = Body(..., description="List of words with their information to generate quiz from")):

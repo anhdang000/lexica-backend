@@ -1,17 +1,11 @@
-# ─────────────────────────────────────────────────────────────────────────────
-# Base image
 FROM python:3.11-slim
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Build arguments (you can override these with docker build --build-arg)
 ARG GITHUB_REPO=https://github.com/unclecode/crawl4ai.git
 ARG GITHUB_BRANCH=main
-ARG INSTALL_TYPE=default      # default | torch | transformer | all
+ARG INSTALL_TYPE=default
 ARG ENABLE_GPU=false
 ARG TARGETARCH
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Environment variables
 ENV PYTHONFAULTHANDLER=1 \
     PYTHONHASHSEED=random \
     PYTHONUNBUFFERED=1 \
@@ -25,8 +19,6 @@ ENV PYTHONFAULTHANDLER=1 \
 
 WORKDIR /app
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 1. Install OS‑level build & runtime deps for crawl4ai + Playwright
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         curl \
@@ -37,7 +29,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-dev \
         libjpeg-dev \
         redis-server \
-        # Playwright libraries:
         libglib2.0-0 \
         libnss3 \
         libnspr4 \
@@ -60,8 +51,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libatspi2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 2. (Optional) platform‑specific optimizations & GPU support
 RUN if [ "$ENABLE_GPU" = "true" ] && [ "$TARGETARCH" = "amd64" ] ; then \
         apt-get update && apt-get install -y --no-install-recommends nvidia-cuda-toolkit && \
         rm -rf /var/lib/apt/lists/*; \
@@ -78,33 +67,21 @@ RUN if [ "$ENABLE_GPU" = "true" ] && [ "$TARGETARCH" = "amd64" ] ; then \
         echo "Skipping platform‑specific optimizations"; \
     fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 3. Install your app’s Python requirements
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 4. Clone & install crawl4ai
 RUN git clone --depth 1 --branch ${GITHUB_BRANCH} ${GITHUB_REPO} /tmp/crawl4ai \
     && pip install --no-cache-dir /tmp/crawl4ai${INSTALL_TYPE:+[${INSTALL_TYPE}]} \
     && rm -rf /tmp/crawl4ai
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 5. (If you need the "all" extras) download NLTK data
 RUN if [ "${INSTALL_TYPE}" = "all" ]; then \
         python -m nltk.downloader punkt stopwords ; \
     fi
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 6. Install Playwright Python + download browsers
 RUN pip install --no-cache-dir playwright \
     && playwright install --with-deps chromium
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 7. Copy in your app and expose UVicorn port
 COPY . .
 EXPOSE 10000
 
-# ─────────────────────────────────────────────────────────────────────────────
-# 8. Launch your FastAPI/UVicorn app
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "10000"]
