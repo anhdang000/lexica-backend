@@ -1,16 +1,27 @@
 from fastapi import FastAPI, HTTPException, Query, Body
+from fastapi.middleware.cors import CORSMiddleware  # Add this import
 from app.models.responses import HealthResponse, DictionaryEntry
 from app.services.dictionary import Dictionary
 from app.services.vocabulary_manager import VocabularyManager
 from app.services.practice_games import PracticeGames
 from app.services.web_fetcher import WebFetcher
 from app.utils.text_utils import validate_word
+from app.config import settings  # Import settings to get allowed_origins
 from typing import List, Dict, Any
 
 app = FastAPI(
     title="Dictionary Lookup API",
     description="A simple API for looking up word definitions",
     version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.allowed_origins.split(","),  # Use the value from config.ini
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
 )
 
 # Initialize services
