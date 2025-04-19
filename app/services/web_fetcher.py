@@ -1,22 +1,25 @@
 import asyncio
+import os
 from typing import Dict, Any
 
-from crawl4ai import AsyncWebCrawler
 from fastapi import HTTPException
+from fetchfox_sdk import FetchFox
 
 from app.utils.text_utils import preprocess_markdown
 
 class WebFetcher:
-    """Service class for fetching content from URLs using crawl4ai."""
+    """Service class for fetching content from URLs using fetchfox."""
     
     def __init__(self):
         """Initialize the WebFetcher service."""
-        self.last_crawl_time = 0
-        self.min_delay_between_crawls = 1  # 1 second minimum delay
+        self.api_key = os.getenv("FETCHFOX_API_KEY", "")
+        if not self.api_key:
+            print("Warning: FETCHFOX_API_KEY environment variable is not set")
+        self.fox = FetchFox(api_key=self.api_key)
     
     async def fetch_content(self, url: str) -> Dict[str, Any]:
         """
-        Fetch content from the specified URL using crawl4ai.
+        Fetch content from the specified URL using fetchfox.
         
         Args:
             url: The URL to fetch content from
@@ -25,37 +28,34 @@ class WebFetcher:
             Dictionary containing the fetched content and metadata
         """
         try:
-            # Calculate time since last crawl and add delay if needed
-            current_time = asyncio.get_event_loop().time()
-            time_since_last_crawl = current_time - self.last_crawl_time
-            
-            if time_since_last_crawl < self.min_delay_between_crawls:
-                # Add a small delay to ensure previous browser has been properly cleaned up
-                await asyncio.sleep(self.min_delay_between_crawls - time_since_last_crawl)
-            
-            # Update the last crawl time
-            self.last_crawl_time = asyncio.get_event_loop().time()
-            
-            # Now proceed with the crawl
-            async with AsyncWebCrawler() as crawler:
-                result = await crawler.arun(url=url)
-                
-                # Get markdown content
-                markdown_content = result.markdown if hasattr(result, 'markdown') else ""
-                
-                # Preprocess the markdown content
-                processed_markdown = preprocess_markdown(markdown_content)
-                
-                # Structure the response
-                response = {
-                    "url": url,
-                    "title": result.title if hasattr(result, 'title') else "",
-                    "markdown": markdown_content,
-                    "processed_markdown": processed_markdown,
-                    "html": result.html if hasattr(result, 'html') else ""
+            # Create extraction request for fetchfox
+            items = self.fox.extract(
+                url,
+                {
+                    'title': 'What is the article title?', 
+                    'description': 'What is the meta description?', 
+                    'content': 'What is the full article content?'
                 }
-                
-                return response
+            )
+            
+            # Extract the first result
+            result = items.limit(1)[0]
+            
+            if not result:
+                raise HTTPException(
+                    status_code=404,
+                    detail="No content could be extracted from the provided URL"
+                )
+            
+            # Structure the response
+            response = {
+                "url": url,
+                "title": result.get('title', ""),
+                "description": result.get('description', ""),
+                "content": result.get('content', "")
+            }
+            
+            return response
                 
         except Exception as e:
             raise HTTPException(

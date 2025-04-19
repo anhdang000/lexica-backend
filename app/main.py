@@ -72,7 +72,7 @@ async def get_vocab_text(text: str = Body(..., description="Text to extract voca
 @app.post("/web/fetch", tags=["WebContent"])
 async def fetch_web_content(url: str = Body(..., description="URL to fetch content from")):
     """
-    Fetch content from a specified URL using crawl4ai.
+    Fetch content from a specified URL using FetchFox.
     
     Args:
         url: The URL to fetch content from
